@@ -1,101 +1,212 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState } from "react";
+
+// Flight interface for typed results
+interface Flight {
+  id: string;
+  destination: string;
+  price: number;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  // Existing states
+  const [description, setDescription] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [budget, setBudget] = useState<string>("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // New fields for flight search (common in flight APIs):
+  const [origin, setOrigin] = useState<string>("LON"); // e.g. "LON" for London
+  const [destinationCode, setDestinationCode] = useState<string>("BCN"); // e.g. "BCN" for Barcelona
+  const [departureDate, setDepartureDate] = useState<string>("2024-01-15"); 
+  const [returnDate, setReturnDate] = useState<string>("2024-01-22");
+
+  // Results from the API
+  const [results, setResults] = useState<Flight[]>([]);
+
+  // Predefined tags (for the LLM part)
+  const availableTags: string[] = [
+    "beach",
+    "sunny/warm",
+    "europe",
+    "historical",
+    "adventure",
+    "nature",
+  ];
+
+  // Toggle tag selection
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prevTags) =>
+      prevTags.includes(tag)
+        ? prevTags.filter((t) => t !== tag)
+        : [...prevTags, tag]
+    );
+  };
+
+  // Handle the search logic
+  const handleSearch = async () => {
+    try {
+      const response = await fetch("/api/searchFlights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        /**
+         * Send all relevant data (including origin/destination/dates).
+         * The route.ts file can then use these to make a proper request
+         * to the Skyscanner endpoint via RapidAPI.
+         */
+        body: JSON.stringify({
+          description,
+          selectedTags,
+          budget,
+          origin,
+          destinationCode,
+          departureDate,
+          returnDate,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Error fetching flight data:", await response.text());
+        return;
+      }
+
+      const data = await response.json();
+      setResults(data.flights || []);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  return (
+    <main style={{ padding: "2rem" }}>
+      <h1>CheekyEscapes</h1>
+
+      {/* Description Input (used by LLM to extract tags) */}
+      <div>
+        <label style={{ display: "block", marginBottom: "0.25rem" }}>
+          Describe your holiday:
+        </label>
+        <textarea
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={{ width: "100%", padding: "0.5rem", color: "black"}}
+        />
+      </div>
+
+      {/* Example fields for flight parameters */}
+      <div style={{ marginTop: "1rem" }}>
+        <label>
+          Origin (IATA code):{" "}
+          <input
+            type="text"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+            style={{ marginLeft: "0.5rem", color: "black" }}
+          />
+        </label>
+      </div>
+
+      <div style={{ marginTop: "1rem" }}>
+        <label>
+          Destination (IATA code):{" "}
+          <input
+            type="text"
+            value={destinationCode}
+            onChange={(e) => setDestinationCode(e.target.value)}
+            style={{ marginLeft: "0.5rem", color: "black" }}
+          />
+        </label>
+      </div>
+
+      <div style={{ marginTop: "1rem" }}>
+        <label>
+          Departure Date:
+          <input
+            type="date"
+            value={departureDate}
+            onChange={(e) => setDepartureDate(e.target.value)}
+            style={{ marginLeft: "0.5rem", color: "black"}}
+          />
+        </label>
+      </div>
+
+      <div style={{ marginTop: "1rem" }}>
+        <label>
+          Return Date:
+          <input
+            type="date"
+            value={returnDate}
+            onChange={(e) => setReturnDate(e.target.value)}
+            style={{ marginLeft: "0.5rem", color: "black"}}
+          />
+        </label>
+      </div>
+
+      {/* Tag Buttons */}
+      <div style={{ marginTop: "1rem" }}>
+        <p>Select interests/tags:</p>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              style={{
+                padding: "0.5rem 1rem",
+                background: selectedTags.includes(tag)
+                  ? "#0070f3"
+                  : "#eaeaea",
+                color: selectedTags.includes(tag) ? "#fff" : "#000",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              {tag}
+            </button>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+
+      {/* Budget */}
+      <div style={{ marginTop: "1rem" }}>
+        <label>
+          Budget ($):
+          <input
+            type="number"
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+            style={{ marginLeft: "0.5rem", color: "black"}}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        </label>
+      </div>
+
+      {/* Search Button */}
+      <div style={{ marginTop: "1rem" }}>
+        <button
+          onClick={handleSearch}
+          style={{ padding: "0.75rem 1.5rem", fontSize: "1rem"}}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          Search
+        </button>
+      </div>
+
+      {/* Results */}
+      <div style={{ marginTop: "2rem" }}>
+        <h2>Results</h2>
+        {results.length > 0 ? (
+          <ul>
+            {results.map((flight) => (
+              <li key={flight.id}>
+                {flight.destination} – ${flight.price}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No results yet</p>
+        )}
+      </div>
+    </main>
   );
 }
