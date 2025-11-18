@@ -2,35 +2,18 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
-import Link from 'next/link';
+import Link from "next/link";
+import BackgroundBubbles from "./ui/Bubbles"; // or "../ui/Bubbles" if you don’t use @ alias
+
+
 export default function Hero() {
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 overflow-hidden">
       <div className="absolute inset-0 bg-black/20" />
       
       {/* Animated background elements */}
-      <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-white/20 rounded-full"
-            animate={{
-              y: [0, -100, 0],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-          />
-        ))}
-      </div>
-
+      <BackgroundBubbles />
+  
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="max-w-6xl mx-auto text-center">
           <motion.div

@@ -2,33 +2,14 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Clock, Users, MapPin } from "lucide-react";
+import BackgroundBubbles from "./ui/Bubbles"; // or "../ui/Bubbles" if you don’t use @ alias
 
 export default function FinalCTA() {
   return (
     <section className="relative py-20 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 overflow-hidden">
       {/* Background Animation */}
-      <div className="absolute inset-0">
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/30 rounded-full"
-            animate={{
-              y: [0, -50, 0],
-              opacity: [0, 1, 0],
-              scale: [0, 1, 0],
-            }}
-            transition={{
-              duration: 4 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-            }}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-          />
-        ))}
-      </div>
+      <BackgroundBubbles />
+      
 
       {/* Floating Icons */}
       <div className="absolute inset-0 pointer-events-none">
