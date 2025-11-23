@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CheekyEscapes
 
-## Getting Started
+**CheekyEscapes** is a collaborative travel planning app that lets groups plan a holiday together from idea to booking — all through a single shared link. It’s designed to make group holidays happen faster, with less friction, and more follow-through.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 What We're Building
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A TypeScript-based fullstack web app that lets:
+- A user create a trip idea (date, budget, vibe).
+- AI generate a set of holiday options (destinations + hotels + flights).
+- A link be shared to the group chat.
+- Friends vote on destinations Tinder-style (yes/no or 1–5 rating).
+- The group converges on the best option.
+- Booking links and follow-ups are auto-triggered.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+We also support a B2B angle: Vendors (hotels, airlines, booking sites) can receive warm leads and automate follow-ups after a trip is finalized.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🧱 Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+**Frontend**
+- React + Next.js (App Router)
+- TailwindCSS
+- Framer Motion for animations
+- Aceternity UI for components
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Backend**
+- tRPC (type-safe API routes)
+- PostgreSQL (via Prisma ORM)
+- Auth: Clerk or Lucia
+- Realtime: Pusher or Supabase Realtime
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Infra & Tooling**
+- Vercel (frontend deployment)
+- Railway or Fly.io (backend + DB)
+- TypeScript + GitHub
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🗂️ Key Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Trip creation (title, budget, vibe, month)
+- AI-generated travel options
+- Invite links to group chat
+- Live collaborative voting
+- Group convergence logic
+- Final trip lock-in & booking CTA
+- B2B vendor follow-ups + lead tracking
+
+---
+
+## 🧠 Database Schema (Postgres)
+
+- `User` — people using the app
+- `Trip` — central planning entity
+- `TripMember` — who’s in which trip
+- `Destination` — AI-generated travel options
+- `Vote` — user feedback on destinations
+- `FinalChoice` — confirmed group pick
+- `Vendor` — hotels, flights, etc.
+- `Lead` — booking intent tracking
+
+See `/prisma/schema.prisma` for full schema.
+
+---
+
+## 📁 tRPC Procedures (WIP)
+
+- `createTrip`
+- `joinTrip`
+- `addDestination`
+- `voteDestination`
+- `finalizeTrip`
+- `createVendor`
+- `trackLead`
+
+---
+
+## 🧪 Working Style for Reviews
+
+- I'm building this as a learning + portfolio project.
+- Code reviews are welcome anytime — please point out code smells, missed patterns, or better practices.
+- Don’t worry about hurting feelings — I’m optimizing for speed *and* clarity.
+- If you have suggestions for architecture refactor or tRPC structure, I’m all ears.
+
+---
+
+## 🧭 Roadmap (High Level)
+
+- [ ] MVP trip creation & link sharing
+- [ ] Voting flow
+- [ ] Real-time sync
+- [ ] Final trip convergence & booking
+- [ ] Admin dashboard
+- [ ] B2B lead system
+
+---
+
+## 🙌 Thanks
+
+Appreciate your help reviewing, building, or guiding. Ping me in the repo or DM if you ever want context, walkthroughs, or help exploring the codebase.
+
+Let’s make this fun, useful, and launchable 🚀
