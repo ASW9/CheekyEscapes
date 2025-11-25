@@ -1,19 +1,311 @@
+// schema.prisma
+
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model profiles {
-  id         String   @id @unique
-  name       String?
-  avatarUrl  String?
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
-  email      String   @unique
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+model User {
+  id                String    @id @default(cuid())
+  clerkId           String?   @unique
+  email             String    @unique
+  name              String?
+  avatarUrl         String?
+  stripeCustomerId  String?   @unique
+  
+  // Onboarding tracking
+  onboardedAt       DateTime?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  createdTrips      Trip[]         @relation("TripCreator")
+  memberships       TripMember[]
+  votes             Vote[]
+  
+  @@index([email])
+  @@index([clerkId])
+  @@map("users")
+}
+
+// ============================================
+// TRIP PLANNING
+// ============================================
+
+enum TripStatus {
+  DRAFT
+  OPEN
+  CONVERGED
+  BOOKED
+  CANCELLED
+}
+
+enum TripVibe {
+  ADVENTURE
+  RELAXATION
+  PARTY
+  CULTURE
+  NATURE
+  LUXURY
+  BUDGET
+  FOODIE
+  ROMANTIC
+}
+
+model Trip {
+  id                  String       @id @default(cuid())
+  shareableCode       String       @unique @default(cuid())
+  
+  // Trip details
+  title               String
+  description         String?
+  month               String?
+  budgetMin           Int?
+  budgetMax           Int?
+  duration            Int?        // days
+  vibes               TripVibe[]
+  
+  // Status
+  status              TripStatus   @default(DRAFT)
+  
+  // Creator
+  creatorId           String
+  creator             User         @relation("TripCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Final choice (self-referential)
+  finalDestinationId  String?      @unique
+  finalDestination    Destination? @relation("FinalChoice", fields: [finalDestinationId], references: [id], onDelete: SetNull)
+  convergedAt         DateTime?
+  
+  // Soft delete
+  deletedAt           DateTime?
+  
+  // Timestamps
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  // Relations
+  members             TripMember[]
+  destinations        Destination[] @relation("TripDestinations")
+  leads               Lead[]
+  
+  @@index([shareableCode])
+  @@index([creatorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("trips")
+}
+
+// ============================================
+// TRIP MEMBERS (Join Table)
+// ============================================
+
+enum MemberRole {
+  CREATOR
+  MEMBER
+  VIEWER
+}
+
+model TripMember {
+  id                  String      @id @default(cuid())
+  
+  // Foreign keys
+  tripId              String
+  trip                Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  
+  userId              String?
+  user                User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Anonymous user tracking
+  sessionId           String?     @unique
+  anonymousName       String?
+  anonymousEmail      String?
+  
+  // Member metadata
+  role                MemberRole  @default(MEMBER)
+  hasCompletedVoting  Boolean     @default(false)
+  
+  // Timestamps
+  joinedAt            DateTime    @default(now())
+  lastActiveAt        DateTime    @default(now())
+  
+  @@unique([tripId, userId])
+  @@unique([tripId, sessionId])
+  @@index([tripId])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("trip_members")
+}
+
+// ============================================
+// DESTINATIONS
+// ============================================
+
+model Destination {
+  id                String   @id @default(cuid())
+  
+  tripId            String
+  trip              Trip     @relation("TripDestinations", fields: [tripId], references: [id], onDelete: Cascade)
+  
+  // Location
+  city              String
+  country           String
+  region            String?
+  coordinates       Json?    // { lat: number, lng: number }
+  
+  // Content
+  description       String   @db.Text
+  highlights        String[]
+  imageUrl          String?
+  
+  // Pricing (cached from APIs)
+  flightPrice       Int?
+  hotelPrice        Int?
+  totalPrice        Int?
+  currency          String   @default("USD")
+  
+  // API response caching
+  flightDetails     Json?
+  hotelDetails      Json?
+  
+  // Denormalized vote counts (CRITICAL FOR PERFORMANCE)
+  yesVotes          Int      @default(0)
+  noVotes           Int      @default(0)
+  totalVotes        Int      @default(0)
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  votes             Vote[]
+  finalForTrip      Trip?    @relation("FinalChoice")
+  leads             Lead[]
+  
+  @@index([tripId])
+  @@index([city, country])
+  @@map("destinations")
+}
+
+// ============================================
+// VOTING
+// ============================================
+
+enum VoteValue {
+  YES
+  NO
+  MAYBE
+}
+
+model Vote {
+  id              String       @id @default(cuid())
+  
+  destinationId   String
+  destination     Destination  @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  
+  // Voter identity (one of these must be set)
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  sessionId       String?      // For anonymous voters
+  
+  // Vote data
+  value           VoteValue
+  
+  // Timestamps
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // One vote per user/session per destination
+  @@unique([destinationId, userId])
+  @@unique([destinationId, sessionId])
+  @@index([destinationId])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("votes")
+}
+
+// ============================================
+// B2B VENDORS & LEADS
+// ============================================
+
+enum VendorType {
+  HOTEL
+  AIRLINE
+  TOUR_OPERATOR
+  MARKETPLACE
+}
+
+model Vendor {
+  id            String      @id @default(cuid())
+  name          String
+  type          VendorType
+  contactEmail  String
+  webhookUrl    String?
+  apiKey        String?
+  
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  leads         Lead[]
+  
+  @@index([type])
+  @@index([isActive])
+  @@map("vendors")
+}
+
+enum LeadStatus {
+  NEW
+  SENT
+  RESPONDED
+  CONVERTED
+  LOST
+}
+
+model Lead {
+  id              String      @id @default(cuid())
+  
+  // What trip/destination generated this lead
+  tripId          String
+  trip            Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  
+  destinationId   String
+  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  
+  // Which vendor receives this lead
+  vendorId        String
+  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  // Lead data
+  status          LeadStatus  @default(NEW)
+  groupSize       Int
+  estimatedValue  Int?
+  contactEmails   String[]
+  
+  // Tracking
+  sentAt          DateTime?
+  respondedAt     DateTime?
+  convertedAt     DateTime?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([tripId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("leads")
 }
